@@ -29,6 +29,7 @@ import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.util.somethingos.QSLayoutCustomizer;
 import com.android.systemui.Dumpable;
 import com.android.systemui.ProtoDumpable;
 import com.android.systemui.R;
@@ -119,6 +120,8 @@ public class QSTileHost implements QSHost, Tunable, PluginListener<QSFactory>, P
 
     private TileLifecycleManager.Factory mTileLifeCycleManagerFactory;
 
+    private static boolean mIsOOSLayout;
+
     private final FeatureFlags mFeatureFlags;
 
     @Inject
@@ -155,6 +158,8 @@ public class QSTileHost implements QSHost, Tunable, PluginListener<QSFactory>, P
         mCurrentUser = userTracker.getUserId();
         mSecureSettings = secureSettings;
         mCustomTileStatePersister = customTileStatePersister;
+
+        mIsOOSLayout = QSLayoutCustomizer.isQsLayoutEnabled();
 
         mainExecutor.execute(() -> {
             // This is technically a hack to avoid circular dependency of
@@ -596,6 +601,11 @@ public class QSTileHost implements QSHost, Tunable, PluginListener<QSFactory>, P
                 }
             }
         }
+        if (mIsOOSLayout) {
+            tiles.remove("internet");
+            tiles.remove("bt");
+        }
+
         return tiles;
     }
 

@@ -27,6 +27,7 @@ import android.view.View.OnLayoutChangeListener;
 import androidx.annotation.Nullable;
 
 import com.android.app.animation.Interpolators;
+import com.android.internal.util.somethingos.QSLayoutCustomizer;
 import com.android.systemui.dagger.qualifiers.Main;
 import com.android.systemui.plugins.qs.QS;
 import com.android.systemui.plugins.qs.QSTile;
@@ -139,6 +140,7 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
     private final Executor mExecutor;
     private boolean mShowCollapsedOnKeyguard;
     private int mQQSTop;
+    private static boolean mIsOOSLayout;
 
     private int[] mTmpLoc1 = new int[2];
     private int[] mTmpLoc2 = new int[2];
@@ -163,6 +165,7 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
         if (mQsPanelController.isAttachedToWindow()) {
             onViewAttachedToWindow(null);
         }
+        mIsOOSLayout = QSLayoutCustomizer.isQsLayoutEnabled();
         QSTileLayout tileLayout = mQsPanelController.getTileLayout();
         if (tileLayout instanceof PagedTileLayout) {
             mPagedLayout = ((PagedTileLayout) tileLayout);
@@ -345,17 +348,31 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
                     mQQSTileHeightAnimator.addView(quickTileView);
 
                     // Icons
-                    translateContent(
-                            quickTileView.getIcon(),
-                            tileView.getIcon(),
-                            view,
-                            xOffset,
-                            yOffset,
-                            mTmpLoc1,
-                            translationXBuilder,
-                            translationYBuilder,
-                            qqsTranslationYBuilder
-                    );
+                    if (mIsOOSLayout) {
+                        translateContent(
+                                quickTileView.getIconWithBackground(),
+                                tileView.getIconWithBackground(),
+                                view,
+                                xOffset,
+                                yOffset,
+                                mTmpLoc1,
+                                translationXBuilder,
+                                translationYBuilder,
+                                qqsTranslationYBuilder
+                        );
+                    } else {
+                        translateContent(
+                                quickTileView.getIcon(),
+                                tileView.getIcon(),
+                                view,
+                                xOffset,
+                                yOffset,
+                                mTmpLoc1,
+                                translationXBuilder,
+                                translationYBuilder,
+                                qqsTranslationYBuilder
+                        );
+                    }
 
                     // Label containers
                     translateContent(
@@ -387,8 +404,18 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
                     // * on the tile themselves
                     // * on TileLayout
                     // Therefore, we use a quadratic interpolator animator to animate the alpha
-                    // for tiles in QQS to match.
-                    quadraticInterpolatorBuilder
+                    // for tiles in QQS to match.                
+                    if (mIsOOSLayout) {
+                        quadraticInterpolatorBuilder
+                                .addFloat(quickTileView.getLabelContainer(), "alpha", 0, 1);
+                        nonFirstPageAlphaBuilder
+                                .addFloat(quickTileView.getLabelContainer(), "alpha", 0, 0);
+
+                        mAnimatedQsViews.add(tileView);
+                        mAllViews.add(quickTileView);
+                        mAllViews.add(quickTileView.getLabelContainer());
+                    } else {
+                        quadraticInterpolatorBuilder
                             .addFloat(quickTileView.getSecondaryLabel(), "alpha", 0, 1);
                     nonFirstPageAlphaBuilder
                             .addFloat(quickTileView.getSecondaryLabel(), "alpha", 0, 0);
@@ -396,6 +423,7 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
                     mAnimatedQsViews.add(tileView);
                     mAllViews.add(quickTileView);
                     mAllViews.add(quickTileView.getSecondaryLabel());
+                    }
                 } else if (!isIconInAnimatedRow(count)) {
                     // Pretend there's a corresponding QQS tile (for the position) that we are
                     // expanding from.
@@ -414,8 +442,13 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
                     mOtherFirstPageTilesHeightAnimator.addView(tileView);
                     tileView.setClipChildren(true);
                     tileView.setClipToPadding(true);
-                    firstPageBuilder.addFloat(tileView.getSecondaryLabel(), "alpha", 0, 1);
-                    mAllViews.add(tileView.getSecondaryLabel());
+                    if (mIsOOSLayout) {
+                        firstPageBuilder.addFloat(tileView.getLabelContainer(), "alpha", 0, 1);
+                        mAllViews.add(tileView.getLabelContainer());
+                    } else {
+                        firstPageBuilder.addFloat(tileView.getSecondaryLabel(), "alpha", 0, 1);
+                        mAllViews.add(tileView.getSecondaryLabel());
+                    }
                 }
 
                 mAllViews.add(tileView);
@@ -428,12 +461,22 @@ public class QSAnimator implements QSHost.Callback, PagedTileLayout.PageListener
 
         animateBrightnessSlider();
 
-        mFirstPageAnimator = firstPageBuilder
+        if (mIsOOSLayout) {
+            mFirstPageAnimator = firstPageBuilder
+                    // Fade in the tiles/labels as we reach the final position.
+                    .addFloat(tileLayout, "alpha", 0, 1)
+                    .addFloat(quadraticInterpolatorBuilder.build(), "position", 0, 1)
+            .setStartDelay(EXPANDED_TILE_DELAY)
+                    .setListener(this)
+                    .build();
+        } else {
+            mFirstPageAnimator = firstPageBuilder
                 // Fade in the tiles/labels as we reach the final position.
                 .addFloat(tileLayout, "alpha", 0, 1)
                 .addFloat(quadraticInterpolatorBuilder.build(), "position", 0, 1)
                 .setListener(this)
                 .build();
+        }
 
         // Fade in the media player as we reach the final position
         Builder builder = new Builder().setStartDelay(EXPANDED_TILE_DELAY);

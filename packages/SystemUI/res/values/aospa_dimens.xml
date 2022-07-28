@@ -25,4 +25,10 @@
     <!-- Bluetooth dialog -->
     <dimen name="bluetooth_dialog_active_device_bottom_margin">4dp</dimen>
 
+
+    <!-- QuickQS BrightnessBar -->
+    <dimen name="new_qqs_brightness_margin_top">4dp</dimen>
+
+    <dimen name="custom_qs_panel_padding_top">142dp</dimen>
+
 </resources>

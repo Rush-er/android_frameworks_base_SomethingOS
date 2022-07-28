@@ -46,6 +46,7 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.android.app.animation.Interpolators;
 import com.android.keyguard.BouncerPanelExpansionCalculator;
+import com.android.internal.util.somethingos.QSLayoutCustomizer;
 import com.android.systemui.Dumpable;
 import com.android.systemui.R;
 import com.android.systemui.animation.ShadeInterpolation;
@@ -88,6 +89,7 @@ public class QSFragment extends LifecycleFragment implements QS, CommandQueue.Ca
     private static final String EXTRA_EXPANDED = "expanded";
     private static final String EXTRA_LISTENING = "listening";
     private static final String EXTRA_VISIBLE = "visible";
+    private static boolean mIsOOSLayout;
 
     private final Rect mQsBounds = new Rect();
     private final SysuiStatusBarStateController mStatusBarStateController;
@@ -201,6 +203,7 @@ public class QSFragment extends LifecycleFragment implements QS, CommandQueue.Ca
         mFooterActionsViewBinder = footerActionsViewBinder;
         mListeningAndVisibilityLifecycleOwner = new ListeningAndVisibilityLifecycleOwner();
         mSecureLockscreenQSDisabler = secureLockscreenQSDisabler;
+        mIsOOSLayout = QSLayoutCustomizer.isQsLayoutEnabled();
     }
 
     @Override
@@ -512,6 +515,9 @@ public class QSFragment extends LifecycleFragment implements QS, CommandQueue.Ca
 
     public void setBrightnessMirrorController(
             BrightnessMirrorController brightnessMirrorController) {
+        if (mIsOOSLayout) {
+            mQuickQSPanelController.setBrightnessMirror(brightnessMirrorController);
+        }
         mQSPanelController.setBrightnessMirror(brightnessMirrorController);
     }
 
@@ -662,6 +668,9 @@ public class QSFragment extends LifecycleFragment implements QS, CommandQueue.Ca
         boolean fullyCollapsed = expansion == 0.0f;
         int heightDiff = getHeightDiff();
         float panelTranslationY = translationScaleY * heightDiff;
+        if (mIsOOSLayout) {
+            mHeader.setExpansion(onKeyguardAndExpanded, expansion, panelTranslationY);
+        }
 
         if (expansion < 1 && expansion > 0.99) {
             if (mQuickQSPanelController.switchTileLayout(false)) {

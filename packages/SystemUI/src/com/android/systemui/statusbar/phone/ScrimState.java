@@ -284,7 +284,7 @@ public enum ScrimState {
         public void prepare(ScrimState previousState) {
             mFrontTint = Color.TRANSPARENT;
             mBehindTint = Color.BLACK;
-            mNotifTint = mClipQsScrim ? Color.BLACK : Color.TRANSPARENT;
+            mNotifTint = Color.TRANSPARENT;
 
             mFrontAlpha = 0;
             mBehindAlpha = mClipQsScrim ? 1 : 0;

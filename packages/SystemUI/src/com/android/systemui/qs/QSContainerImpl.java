@@ -19,6 +19,8 @@ package com.android.systemui.qs;
 import static android.app.StatusBarManager.DISABLE2_QUICK_SETTINGS;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import com.android.internal.util.somethingos.QSLayoutCustomizer;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.PointF;
@@ -55,12 +57,14 @@ public class QSContainerImpl extends FrameLayout implements Dumpable {
     private int mHorizontalMargins;
     private int mTilesPageMargin;
     private boolean mQsDisabled;
+    private static boolean mIsOOSLayout;
     private int mContentHorizontalPadding = -1;
     private boolean mClippingEnabled;
     private boolean mIsFullWidth;
 
     public QSContainerImpl(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mIsOOSLayout = QSLayoutCustomizer.isQsLayoutEnabled();
     }
 
     @Override
@@ -88,11 +92,19 @@ public class QSContainerImpl extends FrameLayout implements Dumpable {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         // QSPanel will show as many rows as it can (up to TileLayout.MAX_ROWS) such that the
         // bottom and footer are inside the screen.
+        Configuration config = getResources().getConfiguration();
+        boolean navBelow = config.smallestScreenWidthDp >= 600
+            || config.orientation != Configuration.ORIENTATION_LANDSCAPE;
         MarginLayoutParams layoutParams = (MarginLayoutParams) mQSPanelContainer.getLayoutParams();
 
+        // The footer is pinned to the bottom of QSPanel (same bottoms), therefore we don't need to
+        // subtract its height. We do not care if the collapsed notifications fit in the screen.
         int availableHeight = View.MeasureSpec.getSize(heightMeasureSpec);
         int maxQs = availableHeight - layoutParams.topMargin - layoutParams.bottomMargin
                 - getPaddingBottom();
+        if (navBelow && mIsOOSLayout) {
+            maxQs -= getResources().getDimensionPixelSize(R.dimen.navigation_bar_height);
+        }
         int padding = mPaddingLeft + mPaddingRight + layoutParams.leftMargin
                 + layoutParams.rightMargin;
         final int qsPanelWidthSpec = getChildMeasureSpec(widthMeasureSpec, padding,
@@ -100,6 +112,8 @@ public class QSContainerImpl extends FrameLayout implements Dumpable {
         mQSPanelContainer.measure(qsPanelWidthSpec,
                 MeasureSpec.makeMeasureSpec(maxQs, MeasureSpec.AT_MOST));
         int width = mQSPanelContainer.getMeasuredWidth() + padding;
+        int height = layoutParams.topMargin + layoutParams.bottomMargin
+                + mQSPanelContainer.getMeasuredHeight() + getPaddingBottom();
         super.onMeasure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(availableHeight, MeasureSpec.EXACTLY));
         // QSCustomizer will always be the height of the screen, but do this after

@@ -11892,6 +11892,14 @@ public final class Settings {
         @Readable
         public static final String HIDE_DEVELOPER_STATUS = "hide_developer_status";
 
+
+        /**
+         * Control whether to show the OOS QS Panel.
+         * @hide
+         */
+        @Readable
+        public static final String OOS_QS_PANEL = "oos_qs_panel";
+          
         /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
